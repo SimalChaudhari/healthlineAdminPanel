@@ -11,6 +11,8 @@ const notificationSchema = new mongoose.Schema(
     sentAt: { type: Date, default: null },
     sentCount: { type: Number, default: 0 },
     failedCount: { type: Number, default: 0 },
+    /** First Expo error from the last send, shown to the admin */
+    lastError: { type: String, default: '' },
   },
   { timestamps: true }
 );
@@ -34,10 +36,12 @@ notificationSchema.methods.toPublicJSON = function toPublicJSON() {
     sentAt: this.sentAt,
     sentCount: this.sentCount || 0,
     failedCount: this.failedCount || 0,
+    lastError: this.lastError || '',
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   };
 };
 
-export const Notification =
-  mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
+// Re-register on hot reload: a cached model keeps the old schema and silently drops new fields.
+if (mongoose.models.Notification) mongoose.deleteModel('Notification');
+export const Notification = mongoose.model('Notification', notificationSchema);

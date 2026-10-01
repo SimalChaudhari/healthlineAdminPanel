@@ -17,13 +17,26 @@ async function postChunk(messages) {
     headers.Authorization = `Bearer ${process.env.EXPO_ACCESS_TOKEN}`;
   }
 
-  const res = await fetch(EXPO_PUSH_URL, { method: 'POST', headers, body: JSON.stringify(messages) });
+  const res = await fetch(EXPO_PUSH_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(messages),
+  });
   const data = await res.json().catch(() => null);
   if (!res.ok || !Array.isArray(data?.data)) {
     throw new Error(data?.errors?.[0]?.message || `Expo push failed (${res.status})`);
   }
   return data.data;
 }
+
+/** Expo ticket error codes → what the admin should do about it. */
+const PUSH_ERROR_HINTS = {
+  InvalidCredentials:
+    'Android push key missing: upload the Firebase FCM V1 service account key in Expo (eas credentials).',
+  DeviceNotRegistered: 'App was uninstalled or notifications turned off on that phone.',
+  MessageTooBig: 'Message is too long.',
+  MessageRateExceeded: 'Too many messages to one phone — try again later.',
+};
 
 /**
  * Send one notification to every push token of the users matching `userFilter`.
@@ -35,19 +48,28 @@ export async function sendPushToUsers(userFilter, { title, body, data = {} }) {
 
   let sent = 0;
   let failed = 0;
+  let error = '';
   const deadTokens = [];
 
   for (let i = 0; i < tokens.length; i += CHUNK_SIZE) {
     const chunk = tokens.slice(i, i + CHUNK_SIZE);
-    const messages = chunk.map((to) => ({ to, title, body, data, sound: 'default', channelId: 'default' }));
+    const messages = chunk.map((to) => ({
+      to,
+      title,
+      body,
+      data,
+      sound: 'default',
+      channelId: 'default',
+    }));
 
     let tickets;
     try {
       // eslint-disable-next-line no-await-in-loop
       tickets = await postChunk(messages);
-    } catch (error) {
-      console.error('Expo push chunk error:', error);
+    } catch (chunkError) {
+      console.error('Expo push chunk error:', chunkError);
       failed += chunk.length;
+      error = error || chunkError.message;
       continue; // eslint-disable-line no-continue
     }
 
@@ -57,7 +79,9 @@ export async function sendPushToUsers(userFilter, { title, body, data = {} }) {
         sent += 1;
       } else {
         failed += 1;
-        if (ticket.details?.error === 'DeviceNotRegistered') deadTokens.push(chunk[idx]);
+        const code = ticket.details?.error;
+        if (code === 'DeviceNotRegistered') deadTokens.push(chunk[idx]);
+        error = error || PUSH_ERROR_HINTS[code] || ticket.message || code || 'Unknown push error';
       }
     }
   }
@@ -66,7 +90,7 @@ export async function sendPushToUsers(userFilter, { title, body, data = {} }) {
     await User.updateMany({}, { $pull: { pushTokens: { $in: deadTokens } } });
   }
 
-  return { sent, failed, devices: tokens.length };
+  return { sent, failed, devices: tokens.length, error };
 }
 
 /** Send a saved Notification campaign to its audience and mark it Sent. */
@@ -84,6 +108,7 @@ export async function sendCampaign(notification) {
   notification.sentAt = new Date();
   notification.sentCount = result.sent;
   notification.failedCount = result.failed;
+  notification.lastError = result.error || '';
   await notification.save();
 
   return result;

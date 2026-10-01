@@ -94,7 +94,9 @@ export function HealthlineNotificationForm({ currentNotification }) {
         result = res.data?.result;
       }
 
-      if (shouldSend) {
+      if (shouldSend && result?.error) {
+        toast.error(`Sent to ${result.sent} of ${result.devices} devices — ${result.error}`);
+      } else if (shouldSend) {
         toast.success(
           result?.devices
             ? `Sent to ${result.sent} of ${result.devices} devices`

@@ -104,11 +104,15 @@ export function HealthlineNotificationsView() {
       setSending(true);
       const res = await axios.post(endpoints.notifications.send(sendId));
       const result = res.data?.result;
-      toast.success(
-        result?.devices
-          ? `Sent to ${result.sent} of ${result.devices} devices`
-          : 'No devices registered for this audience yet'
-      );
+      if (result?.error) {
+        toast.error(`Sent to ${result.sent} of ${result.devices} devices — ${result.error}`);
+      } else {
+        toast.success(
+          result?.devices
+            ? `Sent to ${result.sent} of ${result.devices} devices`
+            : 'No devices registered for this audience yet'
+        );
+      }
       setSendId(null);
       await load();
     } catch (error) {
@@ -199,6 +203,14 @@ export function HealthlineNotificationsView() {
                             {isDraft
                               ? '—'
                               : `${row.sentCount}${row.failedCount ? ` (${row.failedCount} failed)` : ''}`}
+                            {!isDraft && row.lastError ? (
+                              <Typography
+                                variant="caption"
+                                sx={{ display: 'block', color: 'error.main', maxWidth: 260 }}
+                              >
+                                {row.lastError}
+                              </Typography>
+                            ) : null}
                           </TableCell>
                           <TableCell sx={{ whiteSpace: 'nowrap' }}>
                             {formatDate(isDraft ? row.createdAt : row.sentAt)}
