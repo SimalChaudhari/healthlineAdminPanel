@@ -1,0 +1,9 @@
+# Not needed on Vercel (secrets go in Project → Settings → Environment Variables)
+.env
+.env.*
+next templet.zip
+product-page.html
+.next
+.next-*
+node_modules
+.claude
