@@ -12,6 +12,9 @@ const nextConfig = {
     // Admin-only app: no public user-panel / marketing / shop routes
     return [
       { source: '/', destination: '/dashboard', permanent: false },
+      // Not app routes: an app/404 or app/500 page breaks `next build` (ENOENT renaming 500.html).
+      { source: '/404', destination: '/error/404', permanent: false },
+      { source: '/500', destination: '/error/500', permanent: false },
       { source: '/about-us', destination: '/dashboard', permanent: false },
       { source: '/contact-us', destination: '/dashboard', permanent: false },
       { source: '/faqs', destination: '/dashboard', permanent: false },
