@@ -13,7 +13,9 @@ const MAX_BYTES = 3 * 1024 * 1024; // 3MB
 const ALLOWED_FOLDERS = new Set(['healthline/users', 'healthline/foods', 'users', 'foods']);
 
 function normalizeFolder(raw) {
-  const folder = String(raw || 'healthline/users').trim().replace(/^\/+|\/+$/g, '');
+  const folder = String(raw || 'healthline/users')
+    .trim()
+    .replace(/^\/+|\/+$/g, '');
   if (!folder) return 'healthline/users';
   if (ALLOWED_FOLDERS.has(folder)) {
     return folder.includes('/') ? folder : `healthline/${folder}`;
@@ -101,13 +103,8 @@ export async function POST(request) {
 
     // Stable id = overwrite same Cloudinary asset. Never use an admin's id for another user.
     // Food uploads get a unique Cloudinary id (no stablePublicId).
-    const stableId = userAvatar
-      ? targetUserId
-        ? targetUserId
-        : auth.user.role === 'user'
-          ? String(auth.user._id)
-          : undefined
-      : undefined;
+    const ownId = auth.user.role === 'user' ? String(auth.user._id) : undefined;
+    const stableId = userAvatar ? targetUserId || ownId : undefined;
 
     const uploaded = await replaceImage({
       fileInput,
@@ -118,10 +115,7 @@ export async function POST(request) {
     });
 
     // Keep DB in sync only when updating a user avatar — never for food images
-    if (
-      userAvatar &&
-      (!targetUserId || String(targetUserId) === String(auth.user._id))
-    ) {
+    if (userAvatar && (!targetUserId || String(targetUserId) === String(auth.user._id))) {
       auth.user.photoURL = uploaded.url;
       auth.user.photoPublicId = uploaded.publicId;
       await auth.user.save();

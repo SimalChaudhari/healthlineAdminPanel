@@ -102,7 +102,8 @@ const FOOD_IMAGES = {
     'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400&auto=format&fit=crop',
   'Protein Shake':
     'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=400&auto=format&fit=crop',
-  Almonds: 'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?w=400&auto=format&fit=crop',
+  Almonds:
+    'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?w=400&auto=format&fit=crop',
   'Iced Latte':
     'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=400&auto=format&fit=crop',
   'Brown Rice':
@@ -420,17 +421,34 @@ export async function ensureDefaultFoods() {
   }
 
   // Backfill demo images on existing catalog rows that have none
-  for (const [name, imageUrl] of Object.entries(FOOD_IMAGES)) {
-    await Food.updateMany(
-      { name, $or: [{ imageUrl: { $exists: false } }, { imageUrl: '' }, { imageUrl: null }] },
-      { $set: { imageUrl } }
-    );
-  }
+  const imageEntries = Object.entries(FOOD_IMAGES);
+  if (!imageEntries.length) return;
+  await Food.bulkWrite(
+    imageEntries.map(([name, imageUrl]) => ({
+      updateMany: {
+        filter: {
+          name,
+          $or: [{ imageUrl: { $exists: false } }, { imageUrl: '' }, { imageUrl: null }],
+        },
+        update: { $set: { imageUrl } },
+      },
+    }))
+  );
 }
 
 export function normalizeTags(value) {
   if (Array.isArray(value)) {
-    return [...new Set(value.map((t) => String(t || '').trim().toLowerCase()).filter(Boolean))];
+    return [
+      ...new Set(
+        value
+          .map((t) =>
+            String(t || '')
+              .trim()
+              .toLowerCase()
+          )
+          .filter(Boolean)
+      ),
+    ];
   }
   return String(value || '')
     .split(/[,\n]/)
