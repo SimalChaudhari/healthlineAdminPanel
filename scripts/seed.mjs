@@ -94,7 +94,8 @@ async function seedUsers() {
   const items = [
     {
       email: process.env.SEED_ADMIN_EMAIL || 'admin@healthline.local',
-      password: process.env.SEED_ADMIN_PASSWORD || 'Admin@123',
+      // No default: a password in a public repo is a public password. Set SEED_ADMIN_PASSWORD in .env.
+      password: process.env.SEED_ADMIN_PASSWORD,
       firstName: 'Health',
       lastName: 'Admin',
       displayName: 'Health Admin',
@@ -104,7 +105,7 @@ async function seedUsers() {
     },
     {
       email: process.env.SEED_USER_EMAIL || 'user@healthline.local',
-      password: process.env.SEED_USER_PASSWORD || 'User@123',
+      password: process.env.SEED_USER_PASSWORD,
       firstName: 'Demo',
       lastName: 'User',
       displayName: 'Demo User',
@@ -118,12 +119,18 @@ async function seedUsers() {
     const email = item.email.trim().toLowerCase();
     const existing = await User.findOne({ email });
 
+    if (!existing && !item.password) {
+      console.log(`- users: ${email} skipped — set ${item.role === 'admin' ? 'SEED_ADMIN_PASSWORD' : 'SEED_USER_PASSWORD'} in .env to create it`);
+      continue;
+    }
+
     await User.updateOne(
       { email },
       {
+        // Password only on first create — re-running the seed must never reset a changed password.
+        $setOnInsert: { password: await bcrypt.hash(item.password || '', 10) },
         $set: {
           email,
-          password: await bcrypt.hash(item.password, 10),
           firstName: item.firstName,
           lastName: item.lastName,
           displayName: item.displayName,

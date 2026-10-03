@@ -13,6 +13,8 @@ const foodEntrySchema = new mongoose.Schema(
     fiber: { type: Number, default: 0 },
     sugar: { type: Number, default: 0 },
     sodium: { type: Number, default: 0 },
+    /** '' (search/manual), 'ai-scan', 'ai-voice' or 'barcode' */
+    source: { type: String, default: '' },
   },
   { _id: false }
 );
@@ -62,5 +64,6 @@ diaryDaySchema.methods.toPublicJSON = function toPublicJSON() {
   };
 };
 
-export const DiaryDay =
-  mongoose.models.DiaryDay || mongoose.model('DiaryDay', diaryDaySchema);
+// Re-register on hot reload: a cached model keeps the old schema and silently drops new fields.
+if (mongoose.models.DiaryDay) mongoose.deleteModel('DiaryDay');
+export const DiaryDay = mongoose.model('DiaryDay', diaryDaySchema);

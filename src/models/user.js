@@ -86,6 +86,8 @@ const userSchema = new mongoose.Schema(
     favorites: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Food' }], default: [] },
     /** Expo push tokens for this user's devices (see /api/push-token). Never sent to clients. */
     pushTokens: { type: [String], default: [], select: false },
+    /** Inbox: campaigns sent after this time are unread (see /api/notifications/inbox). */
+    inboxReadAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -151,7 +153,8 @@ userSchema.methods.toPublicJSON = function toPublicJSON() {
     firstName: this.firstName,
     lastName: this.lastName,
     displayName: this.displayName || [this.firstName, this.lastName].filter(Boolean).join(' '),
-    name: this.displayName || [this.firstName, this.lastName].filter(Boolean).join(' ') || this.email,
+    name:
+      this.displayName || [this.firstName, this.lastName].filter(Boolean).join(' ') || this.email,
     role: this.role,
     plan: this.plan || 'Free',
     status: this.status || 'Active',
@@ -166,4 +169,6 @@ userSchema.methods.toPublicJSON = function toPublicJSON() {
   };
 };
 
-export const User = mongoose.models.User || mongoose.model('User', userSchema);
+// Re-register on hot reload: a cached model keeps the old schema and silently drops new fields.
+if (mongoose.models.User) mongoose.deleteModel('User');
+export const User = mongoose.model('User', userSchema);

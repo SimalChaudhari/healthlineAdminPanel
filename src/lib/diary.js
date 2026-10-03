@@ -19,6 +19,8 @@ function num(value, max = 100000) {
   return Math.min(Math.round(n * 10) / 10, max);
 }
 
+const FOOD_SOURCES = ['ai-scan', 'ai-voice', 'barcode'];
+
 function sanitizeFood(item) {
   return {
     logId: str(item?.logId, 64),
@@ -32,6 +34,8 @@ function sanitizeFood(item) {
     fiber: num(item?.fiber, 5000),
     sugar: num(item?.sugar, 5000),
     sodium: num(item?.sodium, 100000),
+    // How it was logged — 'ai-scan' / 'ai-voice' count toward the Mindful eat achievement.
+    source: FOOD_SOURCES.includes(item?.source) ? item.source : '',
   };
 }
 
